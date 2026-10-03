@@ -1,0 +1,10 @@
+{
+  "description": "This user-friendly web application enhances convenience for students by providing easy access to resources, schedules, and academic tools tailored to their needs.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

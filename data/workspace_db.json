@@ -1,0 +1,48 @@
+{
+  "profile": {
+    "name": "Aditya Nagonnavr",
+    "initials": "AK",
+    "major": "Computer Science",
+    "focusStreakDays": 6,
+    "weeklyGoalHours": 20,
+    "weeklyLoggedHours": 0,
+    "avatarColor": "bg-[#F0D8DE]",
+    "badgeColor": "text-[#741B2E]"
+  },
+  "schedule": [],
+  "tasks": [],
+  "routines": [],
+  "chat": [
+    {
+      "id": "msg_1791008946291",
+      "from": "ai",
+      "text": "Hi Aditya. Your workspace is cleared and ready for your live data. Add your courses, classes, and assignments!",
+      "timestamp": "2026-10-03T06:29:06.291Z"
+    },
+    {
+      "id": "msg_1791040395576_u",
+      "from": "user",
+      "text": "What are ACID properties in database systems?",
+      "timestamp": "2026-10-03T15:13:15.576Z"
+    },
+    {
+      "id": "msg_1791040401095_ai",
+      "from": "ai",
+      "text": "Hi Aditya! Great question. \n\nIn database systems, a **transaction** is a sequence of operations treated as a single unit of work. To ensure that data remains reliable and accurate—especially when errors or power outages occur—databases follow a set of four guiding principles known as **ACID**.\n\n---\n\n### 1. The Core Concept (ACID)\n\n* **A – Atomicity (\"All or Nothing\"):** The entire transaction either completes successfully or doesn't happen at all. If one part fails, everything is rolled back to the beginning.\n* **C – Consistency (\"Follow the Rules\"):** The database must move from one valid state to another, obeying all predefined rules, constraints, and schemas (e.g., account balances cannot drop below zero).\n* **I – Isolation (\"No Peeking\"):** Multiple transactions can occur at the same time without interfering with each other. Intermediate states of one transaction are hidden from others until complete.\n* **D – Durability (\"Saved for Good\"):** Once a transaction is committed, its changes are permanently recorded in the database, even if the system crashes or loses power immediately afterward.\n\n---\n\n### 2. Concrete Example: A Bank Transfer\n\nImagine you are transferring **$100** from Account A to Account B:\n\n* **Atomicity:** If $100 is deducted from Account A, but the network crashes before it is added to Account B, the entire operation cancels. Account A gets the $100 back.\n* **Consistency:** The total sum of money in both accounts combined remains the same before and after the transfer.\n* **Isolation:** If a third party checks the balance of Account A while your transfer is still processing, they won't see half-updated data.\n* **Durability:** The moment you see \"Transfer Successful,\" the new balances are written to disk. A power outage 2 seconds later won't undo the transfer.\n\n---\n\n### 3. Quick Practice Check\n\nTo test your understanding, consider this scenario:\n\n> *A server suddenly crashes due to a power outage right after a user successfully purchases a concert ticket. When the server reboots, the ticket is still marked as purchased.*\n\nWhich ACID property ensures the purchase wasn't lost? \n\nLet me know what you think, or if you'd like to dive deeper into any specific property!",
+      "timestamp": "2026-10-03T15:13:21.095Z"
+    },
+    {
+      "id": "msg_1791040557174_u",
+      "from": "user",
+      "text": "tell me about FFT in math",
+      "timestamp": "2026-10-03T15:15:57.174Z"
+    },
+    {
+      "id": "msg_1791040563963_ai",
+      "from": "ai",
+      "text": "Hi Aditya! Great question. The **Fast Fourier Transform (FFT)** is one of the most important algorithms ever created, bridging pure mathematics, physics, and computer science.\n\nHere is a breakdown to make it clear and intuitive:\n\n---\n\n### 1. Core Concept\n\n#### The Goal: Time Domain $\\rightarrow$ Frequency Domain\nImagine you are listening to a musical chord. Your ear hears one combined sound wave changing over time (the **time domain**). However, that chord is actually composed of individual notes like C, E, and G vibrating at specific frequencies (the **frequency domain**). \n\nThe **Discrete Fourier Transform (DFT)** is the mathematical tool that unmixes the chord into its individual pure frequencies using complex numbers and sinusoids (Euler’s formula: $e^{i\\theta} = \\cos\\theta + i\\sin\\theta$).\n\n#### Why the \"Fast\" matters:\n* **Standard DFT:** Takes about **$O(N^2)$** steps for $N$ data points. If you have 1,000,000 samples, that's $1,000,000,000,000$ operations—far too slow for real-time audio or video.\n* **FFT (Cooley-Tukey algorithm):** Uses a clever **divide-and-conquer** approach. It breaks the data into even and odd indices, taking advantage of mathematical symmetries in roots of unity.\n* **The Result:** It slashes the complexity down to **$O(N \\log N)$**, making technologies like MP3 compression, Wi-Fi, MRI scans, and image processing possible in real time.\n\n---\n\n### 2. Concrete Example (Python)\n\nHere is a short snippet showing how FFT uncovers hidden frequencies:\n\n```python\nimport numpy as np\n\n# 1. Create a signal: 1 second sampled at 1000 Hz\nt = np.linspace(0, 1.0, 1000, endpoint=False)\n\n# Mix two pure sine waves: 5 Hz and 50 Hz\nsignal = np.sin(2 * np.pi * 5 * t) + np.sin(2 * np.pi * 50 * t)\n\n# 2. Apply FFT\nfft_result = np.fft.fft(signal)\nfrequencies = np.fft.fftfreq(len(t), d=1/1000)\n\n# Magnitude tells us how strong each frequency is\nmagnitudes = np.abs(fft_result)\n\n# If plotted, you would see two sharp spikes: exactly at 5 Hz and 50 Hz!\n```\n\n---\n\n### 3. Quick Practice Check\n\nTo test your intuition:\n\n> **Question:** Standard CD audio has about **$44,100$ samples per second**. \n> * With a standard $O(N^2)$ algorithm, one second of audio requires roughly **$1.9$ billion operations**.\n> * Roughly how many operations does the FFT ($N \\log_2 N$) need for that same second? \n> *(Hint: $2^{15} \\approx 32,768$ and $2^{16} \\approx 65,536$, so $\\log_2(44,100) \\approx 15.4$)*\n\nTake a guess, or let me know if you'd like to look deeper into the mathematical formulas behind it!",
+      "timestamp": "2026-10-03T15:16:03.963Z"
+    }
+  ],
+  "focusSessions": []
+}
