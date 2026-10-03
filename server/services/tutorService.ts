@@ -1,3 +1,5 @@
+import { GoogleGenAI } from "@google/genai";
+
 interface TutorContext {
   studentName: string;
   courses: string[];
@@ -5,45 +7,28 @@ interface TutorContext {
 }
 
 export async function generateTutorReply(userPrompt: string, context: TutorContext): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY;
-
+  // On Netlify, AI Gateway injects GEMINI_API_KEY and GOOGLE_GEMINI_BASE_URL automatically.
   if (process.env.GEMINI_API_KEY) {
-    const candidateModels = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-3.5-flash", "gemini-1.5-flash"];
-    for (const model of candidateModels) {
-      try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              {
-                role: "user",
-                parts: [{
-                  text: `You are ContextAI Tutor, a friendly, concise, and pedagogical AI tutor for college student ${context.studentName}.
-His current courses are: ${context.courses.length > 0 ? context.courses.join(", ") : "General Studies"}.
-His pending assignments include: ${context.tasks.length > 0 ? context.tasks.map(t => `${t.title} (${t.course}, due: ${t.due})`).join("; ") : "None at the moment"}.
+    const ai = new GoogleGenAI({});
+    const candidateModels = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-3.5-flash"];
+    const prompt = `You are ContextAI Tutor, a friendly, concise, and pedagogical AI tutor for college student ${context.studentName}.
+Their current courses are: ${context.courses.length > 0 ? context.courses.join(", ") : "General Studies"}.
+Their pending assignments include: ${context.tasks.length > 0 ? context.tasks.map(t => `${t.title} (${t.course}, due: ${t.due})`).join("; ") : "None at the moment"}.
 
 Student's Question/Request: "${userPrompt}"
 
 Instructions:
 - Provide a clear, easy-to-understand answer.
 - Structure it when appropriate with: (1) Core Concept, (2) Concrete Example/Code, and (3) A quick practice check or next step.
-- Keep the response encouraging, structured, and easy to read.`
-                }]
-              }
-            ]
-          })
-        });
+- Keep the response encouraging, structured, and easy to read.`;
 
-        if (response.ok) {
-          const data = await response.json();
-          const candidate = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (candidate) return candidate.trim();
-        } else {
-          console.warn(`Model ${model} returned HTTP ${response.status}`);
-        }
+    for (const model of candidateModels) {
+      try {
+        const response = await ai.models.generateContent({ model, contents: prompt });
+        const candidate = response.text;
+        if (candidate) return candidate.trim();
       } catch (err) {
-        console.warn(`Gemini API call with ${model} failed:`, err);
+        console.warn(`Gemini call with ${model} failed:`, err);
       }
     }
   }
@@ -133,7 +118,7 @@ Frame your UX story around *User Outcome*: Show before/after metrics (e.g., "Red
   }
 
   // General questions
-  return `That’s a great question, Aditya!
+  return `That’s a great question, ${context.studentName.split(" ")[0] || "there"}!
 
 Let’s break it down into manageable steps:
 1. **Clarify the Core Idea:** First identify the fundamental definition or purpose of this topic.
