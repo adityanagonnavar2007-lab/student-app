@@ -49,7 +49,10 @@ type IconName =
   | "edit"
   | "upload"
   | "file"
-  | "download";
+  | "download"
+  | "pause"
+  | "refresh"
+  | "filter";
 
 function Icon({ name, className = "size-5" }: { name: IconName; className?: string }) {
   const paths: Record<IconName, React.ReactNode> = {
@@ -76,6 +79,9 @@ function Icon({ name, className = "size-5" }: { name: IconName; className?: stri
     upload: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></>,
     file: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></>,
     download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></>,
+    pause: <><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></>,
+    refresh: <><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" /></>,
+    filter: <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />,
   };
   return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
@@ -120,6 +126,24 @@ function App() {
   const [classForm, setClassForm] = useState({ title: "", time: "10:00", period: "AM", room: "Room 101", courseCode: "" });
   const [routineForm, setRoutineForm] = useState({ title: "", time: "8:00 AM", detail: "", icon: "target" });
   const [profileForm, setProfileForm] = useState({ name: "", major: "", weeklyGoalHours: 20 });
+
+  // Interactive Focus Timer (Pomodoro) State
+  const [focusSecondsLeft, setFocusSecondsLeft] = useState(50 * 60);
+  const [isFocusRunning, setIsFocusRunning] = useState(false);
+
+  useEffect(() => {
+    let interval: any = null;
+    if (isFocusRunning && focusSecondsLeft > 0) {
+      interval = setInterval(() => {
+        setFocusSecondsLeft((sec) => sec - 1);
+      }, 1000);
+    } else if (focusSecondsLeft === 0 && isFocusRunning) {
+      setIsFocusRunning(false);
+      showToast("🎉 50-minute focus session completed! Well done.");
+      logFocusSession(50, "Completed focus block");
+    }
+    return () => clearInterval(interval);
+  }, [isFocusRunning, focusSecondsLeft]);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -324,16 +348,28 @@ function App() {
   }
 
   // --- Focus session ---
-  async function handleStartFocusSession() {
-    setFocusActive(true);
-    showToast("Starting 50-minute focus session... Logging to backend!");
-    const success = await logFocusSession(50, "Review session");
-    if (success) {
-      setProfile((prev) => ({
-        ...prev,
-        weeklyLoggedHours: Math.min(prev.weeklyGoalHours, Math.round((prev.weeklyLoggedHours + 50 / 60) * 10) / 10),
-      }));
+  async function handleToggleFocusSession() {
+    if (!isFocusRunning) {
+      setIsFocusRunning(true);
+      setFocusActive(true);
+      showToast("⏱️ Focus session started! Stay in the zone.");
+      const success = await logFocusSession(50, "Study focus session");
+      if (success) {
+        setProfile((prev) => ({
+          ...prev,
+          weeklyLoggedHours: Math.min(prev.weeklyGoalHours, Math.round((prev.weeklyLoggedHours + 50 / 60) * 10) / 10),
+        }));
+      }
+    } else {
+      setIsFocusRunning(false);
+      showToast("⏸️ Focus timer paused.");
     }
+  }
+
+  function handleResetFocusSession() {
+    setIsFocusRunning(false);
+    setFocusSecondsLeft(50 * 60);
+    showToast("🔄 Focus timer reset to 50:00.");
   }
 
   // --- AI Tutor chat ---
@@ -819,19 +855,44 @@ function App() {
                     <div className="absolute -right-16 -top-24 size-64 rounded-full border-[38px] border-white/[.04]" />
                     <div className="relative grid gap-8 md:grid-cols-[1fr_auto] md:items-end">
                       <div>
-                        <div className="mb-5 flex items-center gap-2 text-xs font-bold uppercase tracking-[.16em] text-[#E7BDC7]"><Icon name="sparkles" className="size-4" /> Smart focus session</div>
-                        <h2 className="max-w-xl font-serif text-3xl leading-tight md:text-4xl">Your best focus window starts in 30 minutes.</h2>
-                        <p className="mt-4 max-w-lg text-sm leading-6 text-[#F4DCE2]">Stay on top of your work. Click to log a 50-minute study session directly into your weekly goals.</p>
-                        <div className="mt-6 flex flex-wrap gap-3">
-                          <button onClick={handleStartFocusSession} className="flex items-center gap-2 rounded-xl bg-[#FFFFFF] px-4 py-3 text-sm font-bold text-[#741B2E] transition hover:bg-[#FBECEF]">
-                            <Icon name="play" className="size-4" /> {focusActive ? "50m Session Logged!" : "Log 50m Focus"}
+                        <div className="mb-5 flex items-center gap-2 text-xs font-bold uppercase tracking-[.16em] text-[#E7BDC7]"><Icon name="sparkles" className="size-4" /> Live Pomodoro Focus Mode</div>
+                        <h2 className="max-w-xl font-serif text-3xl leading-tight md:text-4xl">
+                          {isFocusRunning ? "Focus block in progress — stay immersed." : "Ready for your next deep focus block?"}
+                        </h2>
+                        <p className="mt-4 max-w-lg text-sm leading-6 text-[#F4DCE2]">
+                          Work distraction-free in structured 50-minute intervals. Time logged automatically advances your weekly study goal.
+                        </p>
+                        <div className="mt-6 flex flex-wrap items-center gap-3">
+                          <button
+                            onClick={handleToggleFocusSession}
+                            className="flex items-center gap-2 rounded-xl bg-[#FFFFFF] px-5 py-3 text-sm font-bold text-[#741B2E] transition shadow-md hover:bg-[#FBECEF]"
+                          >
+                            <Icon name={isFocusRunning ? "pause" : "play"} className="size-4" />
+                            {isFocusRunning ? "Pause Timer" : focusSecondsLeft < 50 * 60 ? "Resume Timer" : "Start 50m Focus"}
                           </button>
+                          {focusSecondsLeft < 50 * 60 && (
+                            <button
+                              onClick={handleResetFocusSession}
+                              className="flex items-center gap-1.5 rounded-xl border border-white/30 bg-white/10 px-4 py-3 text-sm font-bold text-white hover:bg-white/20"
+                            >
+                              <Icon name="refresh" className="size-4" /> Reset
+                            </button>
+                          )}
                           <button onClick={() => navigate("planner")} className="rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold text-white hover:bg-white/15">View Routines</button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[.07] p-4 backdrop-blur">
-                        <div className="grid size-14 place-items-center rounded-full border-4 border-[#FFFFFF] text-base font-bold">50</div>
-                        <div><p className="text-xs text-[#E7BDC7]">Suggested</p><p className="mt-1 text-sm font-bold">minutes of focus</p></div>
+                      <div className="flex items-center gap-4 rounded-2xl border border-white/15 bg-white/[.10] p-5 backdrop-blur shadow-inner">
+                        <div className="grid min-w-[72px] place-items-center rounded-2xl border-2 border-[#FFFFFF] px-3 py-2 text-xl font-black tracking-wider text-white">
+                          {Math.floor(focusSecondsLeft / 60).toString().padStart(2, '0')}:{(focusSecondsLeft % 60).toString().padStart(2, '0')}
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-[#E7BDC7]">
+                            {isFocusRunning ? "Active countdown" : "Focus timer"}
+                          </p>
+                          <p className="mt-0.5 text-sm font-bold">
+                            {isFocusRunning ? "Remaining time" : "Suggested session"}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </section>
@@ -1071,6 +1132,17 @@ function TaskPage({
   onOpenAdd: () => void;
   onDelete: (id: number) => void;
 }) {
+  const [selectedCourse, setSelectedCourse] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "completed">("all");
+
+  const courses = Array.from(new Set(tasks.map((t) => t.course || "General")));
+
+  const filteredTasks = tasks.filter((t) => {
+    const matchesCourse = selectedCourse === "all" || (t.course || "General") === selectedCourse;
+    const matchesStatus = statusFilter === "all" || (statusFilter === "pending" ? !t.done : t.done);
+    return matchesCourse && matchesStatus;
+  });
+
   return (
     <>
       <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -1100,15 +1172,51 @@ function TaskPage({
         </div>
       </div>
 
+      {/* Filter Toolbar */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E8DCE0] bg-white p-3.5 shadow-xs">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 flex items-center gap-1 text-xs font-bold text-[#85877E]">
+            <Icon name="filter" className="size-3.5" /> Course:
+          </span>
+          <button
+            onClick={() => setSelectedCourse("all")}
+            className={`rounded-lg px-3 py-1 text-xs font-bold transition ${selectedCourse === "all" ? "bg-[#741B2E] text-white" : "text-[#71746C] hover:bg-[#F8ECEF]"}`}
+          >
+            All Courses
+          </button>
+          {courses.map((c) => (
+            <button
+              key={c}
+              onClick={() => setSelectedCourse(c)}
+              className={`rounded-lg px-3 py-1 text-xs font-bold transition ${selectedCourse === c ? "bg-[#741B2E] text-white" : "text-[#71746C] hover:bg-[#F8ECEF]"}`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-1 rounded-xl bg-[#FAF6F7] p-1">
+          {(["all", "pending", "completed"] as const).map((st) => (
+            <button
+              key={st}
+              onClick={() => setStatusFilter(st)}
+              className={`rounded-lg px-2.5 py-1 text-[11px] font-bold capitalize transition ${statusFilter === st ? "bg-white text-[#741B2E] shadow-xs" : "text-[#85877E]"}`}
+            >
+              {st}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid gap-5 md:grid-cols-3">
         {(["High", "Medium", "Low"] as const).map((priority) => (
           <section key={priority} className="rounded-[24px] border border-[#E8DCE0] bg-[#FFFFFF] p-5">
             <div className="mb-5 flex items-center justify-between">
               <h2 className="font-bold">{priority} priority</h2>
-              <span className="rounded-full bg-[#F7F0F2] px-2.5 py-1 text-[10px] font-bold">{tasks.filter((t) => t.priority === priority).length}</span>
+              <span className="rounded-full bg-[#F7F0F2] px-2.5 py-1 text-[10px] font-bold">{filteredTasks.filter((t) => t.priority === priority).length}</span>
             </div>
             <div className="space-y-3">
-              {tasks
+              {filteredTasks
                 .filter((t) => t.priority === priority)
                 .map((task) => (
                   <div key={task.id} className="group relative flex items-start gap-3 rounded-2xl border border-[#EADFE2] bg-white p-4 text-left shadow-sm">
