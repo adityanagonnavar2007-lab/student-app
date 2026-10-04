@@ -1,0 +1,13 @@
+services:
+  # Render Web Service: builds the Vite frontend and serves via Express backend + Gemini API
+  - type: web
+    name: student-app
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: GEMINI_API_KEY
+        sync: false

@@ -15,7 +15,7 @@ import searchRouter from './routes/search.js';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.BACKEND_PORT ? parseInt(process.env.BACKEND_PORT, 10) : 5000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : (process.env.BACKEND_PORT ? parseInt(process.env.BACKEND_PORT, 10) : 5000);
 
 app.use(cors());
 app.use(express.json());
