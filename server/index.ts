@@ -66,11 +66,13 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   res.status(500).json({ error: 'Internal Server Error', message: err.message });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 ContextAI Backend API is running on http://localhost:${PORT}`);
-  console.log(`   Health check: http://localhost:${PORT}/api/health`);
-  console.log(`   Tasks API:   http://localhost:${PORT}/api/tasks`);
-  console.log(`   Tutor API:   http://localhost:${PORT}/api/tutor`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 ContextAI Backend API is running on http://localhost:${PORT}`);
+    console.log(`   Health check: http://localhost:${PORT}/api/health`);
+    console.log(`   Tasks API:   http://localhost:${PORT}/api/tasks`);
+    console.log(`   Tutor API:   http://localhost:${PORT}/api/tutor`);
+  });
+}
 
 export default app;

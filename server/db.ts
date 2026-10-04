@@ -104,7 +104,7 @@ const defaultData: DatabaseSchema = {
   ]
 };
 
-const DATA_DIR = path.resolve(process.cwd(), 'data');
+const DATA_DIR = process.env.VERCEL ? path.join('/tmp', 'data') : path.resolve(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'workspace_db.json');
 
 function ensureDataFile(): void {
@@ -112,6 +112,14 @@ function ensureDataFile(): void {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
   if (!fs.existsSync(DB_FILE)) {
+    // If running on Vercel /tmp, seed from project data if available
+    const rootDbFile = path.resolve(process.cwd(), 'data', 'workspace_db.json');
+    if (fs.existsSync(rootDbFile)) {
+      try {
+        fs.copyFileSync(rootDbFile, DB_FILE);
+        return;
+      } catch {}
+    }
     fs.writeFileSync(DB_FILE, JSON.stringify(defaultData, null, 2), 'utf-8');
   }
 }
