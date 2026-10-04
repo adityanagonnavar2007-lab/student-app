@@ -166,10 +166,22 @@ export async function fetchChat(): Promise<ChatMessage[]> {
   }
 }
 
+export interface SendChatResponse {
+  aiMessage: ChatMessage;
+  chat: ChatMessage[];
+  executedActions?: string[];
+  updatedData?: {
+    tasks?: TaskItem[];
+    routines?: RoutineItem[];
+    schedule?: ClassScheduleItem[];
+    profile?: StudentProfile;
+  };
+}
+
 export async function sendChatMessage(
   message: string,
   context?: { studentName?: string; courses?: string[]; tasks?: { title: string; course: string; due: string }[] }
-): Promise<{ aiMessage: ChatMessage; chat: ChatMessage[] } | null> {
+): Promise<SendChatResponse | null> {
   // First try local backend API
   try {
     const res = await fetch(`${API_BASE}/tutor/chat`, {

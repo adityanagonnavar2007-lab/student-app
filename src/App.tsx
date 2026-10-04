@@ -46,7 +46,10 @@ type IconName =
   | "menu"
   | "close"
   | "trash"
-  | "edit";
+  | "edit"
+  | "upload"
+  | "file"
+  | "download";
 
 function Icon({ name, className = "size-5" }: { name: IconName; className?: string }) {
   const paths: Record<IconName, React.ReactNode> = {
@@ -70,6 +73,9 @@ function Icon({ name, className = "size-5" }: { name: IconName; className?: stri
     close: <path d="m6 6 12 12M18 6 6 18" />,
     trash: <><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></>,
     edit: <><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></>,
+    upload: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></>,
+    file: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></>,
+    download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></>,
   };
   return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
@@ -118,6 +124,30 @@ function App() {
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<{ tasks: TaskItem[]; routines: RoutineItem[]; schedule: ClassScheduleItem[]; totalCount: number } | null>(null);
+
+  // Timezone & Dynamic Greeting state
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const greeting = useMemo(() => {
+    const hour = currentTime.getHours();
+    if (hour >= 4 && hour < 12) return "Good morning";
+    if (hour >= 12 && hour < 17) return "Good afternoon";
+    if (hour >= 17 && hour < 22) return "Good evening";
+    return "Good night";
+  }, [currentTime]);
+
+  const formattedTime = useMemo(() => {
+    return currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }, [currentTime]);
+
+  const formattedDate = useMemo(() => {
+    return currentTime.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+  }, [currentTime]);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -307,14 +337,14 @@ function App() {
   }
 
   // --- AI Tutor chat ---
-  async function sendMessage(event: FormEvent) {
-    event.preventDefault();
-    const value = message.trim();
+  async function sendMessage(event?: FormEvent, customMessage?: string) {
+    if (event) event.preventDefault();
+    const value = (customMessage !== undefined ? customMessage : message).trim();
     if (!value || isAiThinking) return;
 
     const tempUserMsg: ChatMessage = { from: "user", text: value };
     setChat((current) => [...current, tempUserMsg]);
-    setMessage("");
+    if (!customMessage) setMessage("");
     setIsAiThinking(true);
 
     const courses = Array.from(new Set([
@@ -330,6 +360,15 @@ function App() {
     });
     if (res?.chat) {
       setChat(res.chat);
+      if (res.updatedData) {
+        if (res.updatedData.tasks) setTasks(res.updatedData.tasks);
+        if (res.updatedData.routines) setRoutines(res.updatedData.routines);
+        if (res.updatedData.schedule) setSchedule(res.updatedData.schedule);
+        if (res.updatedData.profile) setProfile(res.updatedData.profile);
+      }
+      if (res.executedActions && res.executedActions.length > 0) {
+        showToast(`AI updated workspace: ${res.executedActions.join(', ')}`);
+      }
     } else {
       setChat((current) => [
         ...current,
@@ -756,8 +795,12 @@ function App() {
             <>
               <div className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
                 <div>
-                  <p className="mb-2 text-sm font-semibold text-[#6F746C]">Today</p>
-                  <h1 className="font-serif text-4xl tracking-tight text-[#3C1720] md:text-5xl">Good day, {profile.name.split(" ")[0]}.</h1>
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F8ECEF] px-3 py-1 text-xs font-bold text-[#741B2E]">
+                      <Icon name="clock" className="size-3.5" /> {formattedTime} · {formattedDate}
+                    </span>
+                  </div>
+                  <h1 className="font-serif text-4xl tracking-tight text-[#3C1720] md:text-5xl">{greeting}, {profile.name.split(" ")[0]}.</h1>
                   <p className="mt-3 text-sm text-[#767A72]">Live workspace. Add your assignments, classes, and routines anytime.</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
@@ -1032,9 +1075,29 @@ function TaskPage({
     <>
       <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <PageHeading eyebrow="Assignments" title="Finish what matters." body="Track and organize all your coursework. Add tasks live, check them off, or remove finished items." />
-        <button onClick={onOpenAdd} className="flex items-center gap-2 rounded-xl bg-[#741B2E] px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#5C1425]">
-          <Icon name="plus" className="size-4" /> + Add Assignment
-        </button>
+        <div className="flex flex-wrap gap-2.5">
+          <button
+            onClick={() => {
+              const headers = "ID,Title,Course,Due,Priority,Status\n";
+              const rows = tasks.map(t => `"${t.id}","${t.title.replace(/"/g, '""')}","${t.course}","${t.due}","${t.priority}","${t.done ? "Completed" : "Pending"}"`).join("\n");
+              const blob = new Blob([headers + rows], { type: "text/csv;charset=utf-8;" });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.setAttribute("href", url);
+              link.setAttribute("download", `assignments_${new Date().toISOString().slice(0, 10)}.csv`);
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }}
+            className="flex items-center gap-2 rounded-xl border border-[#CFBEC3] bg-white px-4 py-3 text-sm font-bold text-[#741B2E] shadow-xs hover:bg-[#F8ECEF]"
+            title="Download CSV export of assignments"
+          >
+            <Icon name="download" className="size-4" /> Export CSV
+          </button>
+          <button onClick={onOpenAdd} className="flex items-center gap-2 rounded-xl bg-[#741B2E] px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#5C1425]">
+            <Icon name="plus" className="size-4" /> + Add Assignment
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-5 md:grid-cols-3">
@@ -1090,16 +1153,69 @@ function Tutor({
   chat: ChatMessage[];
   message: string;
   setMessage: (v: string) => void;
-  sendMessage: (e: FormEvent) => void;
+  sendMessage: (e?: FormEvent, customMessage?: string) => void;
   onClear: () => void;
   isThinking: boolean;
 }) {
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; content: string } | null>(null);
+
+  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      setUploadedFile({ name: file.name, content: text });
+    };
+    reader.readAsText(file);
+  }
+
+  function handleSendWithUpload(e: FormEvent) {
+    e.preventDefault();
+    if (uploadedFile) {
+      const combined = `[Uploaded Document: "${uploadedFile.name}"]\n${uploadedFile.content.slice(0, 4000)}\n\nStudent Request: ${message.trim() || "Please analyze this document, extract key topics, and add necessary study assignments or classes to my workspace."}`;
+      sendMessage(undefined, combined);
+      setUploadedFile(null);
+    } else {
+      sendMessage(e);
+    }
+  }
+
   return (
     <>
       <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <PageHeading eyebrow="AI tutor" title="Learn by asking." body="Get clear explanations, code examples, and study plans grounded in your real courses." />
+        <PageHeading eyebrow="AI tutor & workspace assistant" title="Learn by asking & automate tasks." body="Ask questions, upload study materials/syllabi, or tell the AI to add assignments, schedule classes, and adjust routines." />
         <button onClick={onClear} className="text-xs font-bold text-[#8B3A4D] hover:underline">
           Reset Conversation
+        </button>
+      </div>
+
+      {/* Quick Action Suggestion Chips */}
+      <div className="mx-auto mb-4 flex max-w-4xl flex-wrap gap-2">
+        <button
+          onClick={() => sendMessage(undefined, "Add assignment: Algorithms Problem Set 4 for CS 201 due Friday with High priority")}
+          className="rounded-xl border border-[#E5D8DC] bg-white px-3 py-1.5 text-xs font-semibold text-[#741B2E] transition hover:bg-[#F8ECEF]"
+        >
+          ⚡ "+ Add Algorithms Assignment"
+        </button>
+        <button
+          onClick={() => sendMessage(undefined, "Create routine: 30-minute active recall study session at 8:00 PM")}
+          className="rounded-xl border border-[#E5D8DC] bg-white px-3 py-1.5 text-xs font-semibold text-[#741B2E] transition hover:bg-[#F8ECEF]"
+        >
+          ⚡ "+ Add 8 PM Recall Routine"
+        </button>
+        <button
+          onClick={() => sendMessage(undefined, "Add class: Machine Learning at 11:00 AM in Studio 2 for CS 410")}
+          className="rounded-xl border border-[#E5D8DC] bg-white px-3 py-1.5 text-xs font-semibold text-[#741B2E] transition hover:bg-[#F8ECEF]"
+        >
+          ⚡ "+ Schedule ML Class"
+        </button>
+        <button
+          onClick={() => sendMessage(undefined, "Please create a balanced study plan for my pending assignments today")}
+          className="rounded-xl border border-[#E5D8DC] bg-white px-3 py-1.5 text-xs font-semibold text-[#741B2E] transition hover:bg-[#F8ECEF]"
+        >
+          🎯 "Create Study Plan"
         </button>
       </div>
 
@@ -1108,8 +1224,8 @@ function Tutor({
           <div className="flex items-center gap-3">
             <span className="grid size-11 place-items-center rounded-2xl bg-[#741B2E] text-white"><Icon name="sparkles" /></span>
             <div>
-              <p className="text-sm font-bold">ContextAI Tutor</p>
-              <p className="text-xs text-[#85877E]">Ask about any assignment or concept</p>
+              <p className="text-sm font-bold">ContextAI Tutor & Workspace Agent</p>
+              <p className="text-xs text-[#85877E]">Ask questions, upload documents, or modify your workspace</p>
             </div>
           </div>
           <div className="flex items-center gap-2 rounded-full bg-[#EBF7EE] px-3 py-1.5 text-xs font-bold text-[#1F6E36]">
@@ -1131,18 +1247,42 @@ function Tutor({
           ))}
           {isThinking && (
             <div className="max-w-[80%] rounded-2xl rounded-bl-md bg-[#F6EDF0] px-4 py-3 text-xs italic text-[#741B2E]">
-              ContextAI Tutor is thinking...
+              ContextAI Tutor is thinking & updating your workspace...
             </div>
           )}
         </div>
 
-        <form onSubmit={sendMessage} className="flex gap-3 border-t border-[#E8DCE0] p-4">
+        {/* Uploaded Document Banner */}
+        {uploadedFile && (
+          <div className="flex items-center justify-between border-t border-[#F0E4E8] bg-[#FDF7F8] px-5 py-2.5 text-xs text-[#741B2E]">
+            <span className="flex items-center gap-2 font-bold">
+              <Icon name="file" className="size-4" /> Attached: {uploadedFile.name} (Ready to analyze & add items)
+            </span>
+            <button
+              onClick={() => setUploadedFile(null)}
+              className="text-[#85877E] hover:text-[#741B2E]"
+            >
+              <Icon name="close" className="size-3.5" />
+            </button>
+          </div>
+        )}
+
+        <form onSubmit={handleSendWithUpload} className="flex items-center gap-2 border-t border-[#E8DCE0] p-4">
+          <label className="cursor-pointer rounded-xl border border-[#E4D7DB] p-2.5 text-[#741B2E] transition hover:bg-[#F8ECEF]" title="Upload document, syllabus, or notes to AI Tutor">
+            <input
+              type="file"
+              accept=".txt,.md,.json,.csv,.js,.ts,.html,.css"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <Icon name="upload" className="size-5" />
+          </label>
           <input
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             disabled={isThinking}
             className="min-w-0 flex-1 rounded-xl border border-[#E4D7DB] bg-white px-4 py-3 text-sm outline-none focus:border-[#741B2E]"
-            placeholder="Ask about a problem, concept, or study schedule..."
+            placeholder={uploadedFile ? "Tell AI Tutor what to do with this document (e.g. 'Extract my assignments')..." : "Ask a concept or tell AI: 'Add task: Final Project due Friday'..."}
           />
           <button
             type="submit"
@@ -1181,6 +1321,128 @@ function Progress({ tasks, profile }: { tasks: TaskItem[]; profile: StudentProfi
           <p className="mt-4 font-serif text-5xl text-[#561727]">{profile.weeklyLoggedHours}h</p>
           <p className="mt-3 text-xs text-[#865062]">Goal: {profile.weeklyGoalHours}h this week</p>
         </div>
+      </div>
+
+      {/* Interactive Visual Pictographs Section */}
+      <div className="mt-5 grid gap-5 lg:grid-cols-2">
+        {/* Pictograph 1: Course Task Distribution */}
+        <section className="rounded-[24px] border border-[#E8DCE0] bg-[#FFFFFF] p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold">Course Task Pictograph</h2>
+              <p className="mt-1 text-xs text-[#85877E]">Visual icon distribution per course</p>
+            </div>
+            <span className="rounded-full bg-[#F8ECEF] px-3 py-1 text-xs font-bold text-[#741B2E]">
+              1 icon = 1 assignment
+            </span>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            {Array.from(new Set(tasks.map(t => t.course || "General"))).length === 0 ? (
+              <p className="py-6 text-center text-xs italic text-[#85877E]">No assignments entered yet. Add assignments to visualize your course pictograph!</p>
+            ) : (
+              Array.from(new Set(tasks.map(t => t.course || "General"))).map((courseName) => {
+                const courseTasks = tasks.filter(t => (t.course || "General") === courseName);
+                const doneCount = courseTasks.filter(t => t.done).length;
+                const pendingCount = courseTasks.length - doneCount;
+
+                return (
+                  <div key={courseName} className="rounded-2xl border border-[#F0E4E8] bg-[#FAF6F7] p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#3C1720]">{courseName}</span>
+                      <span className="text-xs font-extrabold text-[#741B2E]">
+                        {doneCount} / {courseTasks.length} Done ({Math.round((doneCount / courseTasks.length) * 100)}%)
+                      </span>
+                    </div>
+
+                    {/* Pictograph row of icons */}
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                      {courseTasks.map((t, idx) => (
+                        <div
+                          key={t.id || idx}
+                          title={`${t.title}: ${t.done ? "Completed" : "Pending"}`}
+                          className={`flex items-center justify-center rounded-lg p-1.5 transition-transform hover:scale-110 ${
+                            t.done
+                              ? "bg-[#741B2E] text-white shadow-xs"
+                              : "border border-[#CEBBC1] bg-white text-[#85877E]"
+                          }`}
+                        >
+                          <Icon name={t.done ? "check" : "book"} className="size-4" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <div className="mt-5 flex items-center gap-4 border-t border-[#F0E4E8] pt-3 text-[11px] text-[#85877E]">
+            <span className="flex items-center gap-1.5">
+              <span className="grid size-4 place-items-center rounded bg-[#741B2E] text-white">
+                <Icon name="check" className="size-2.5" />
+              </span>
+              Completed Task
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="grid size-4 place-items-center rounded border border-[#CEBBC1] bg-white text-[#85877E]">
+                <Icon name="book" className="size-2.5" />
+              </span>
+              Pending Task
+            </span>
+          </div>
+        </section>
+
+        {/* Pictograph 2: Weekly Study Focus Matrix */}
+        <section className="rounded-[24px] border border-[#E8DCE0] bg-[#FFFFFF] p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold">Weekly Study Hours Pictograph</h2>
+              <p className="mt-1 text-xs text-[#85877E]">Target vs Logged Focus blocks</p>
+            </div>
+            <span className="rounded-full bg-[#F5E2E7] px-3 py-1 text-xs font-bold text-[#7D2A3D]">
+              1 block = 2 hours
+            </span>
+          </div>
+
+          <div className="mt-6">
+            <div className="flex items-center justify-between text-xs font-bold text-[#71746C]">
+              <span>Progress towards weekly goal ({profile.weeklyGoalHours}h)</span>
+              <span className="text-[#741B2E]">{profile.weeklyLoggedHours} hours logged</span>
+            </div>
+
+            {/* Pictograph Grid */}
+            <div className="mt-4 grid grid-cols-5 gap-2.5 sm:grid-cols-10">
+              {Array.from({ length: Math.ceil(profile.weeklyGoalHours / 2) }).map((_, i) => {
+                const loggedBlocks = Math.floor(profile.weeklyLoggedHours / 2);
+                const isLogged = i < loggedBlocks;
+                const isPartial = !isLogged && i === loggedBlocks && (profile.weeklyLoggedHours % 2 > 0);
+
+                return (
+                  <div
+                    key={i}
+                    title={`Block ${i + 1} (${(i + 1) * 2}h mark): ${isLogged ? "Completed" : isPartial ? "Partially logged" : "Goal remaining"}`}
+                    className={`flex flex-col items-center justify-center gap-1 rounded-xl p-2.5 text-center transition ${
+                      isLogged
+                        ? "bg-[#741B2E] text-white shadow-sm"
+                        : isPartial
+                        ? "border-2 border-[#741B2E] bg-[#FBECEF] text-[#741B2E]"
+                        : "border border-dashed border-[#CFBEC3] bg-[#FAF6F7] text-[#9A9C96]"
+                    }`}
+                  >
+                    <Icon name="clock" className="size-4" />
+                    <span className="text-[10px] font-bold">{(i + 1) * 2}h</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-6 rounded-2xl bg-[#F8ECEF] p-4 text-xs text-[#741B2E]">
+            <p className="font-bold">Consistency Streak: {profile.focusStreakDays} Consecutive Days 🔥</p>
+            <p className="mt-1 text-[#8A4C5B]">You are {Math.max(0, profile.weeklyGoalHours - profile.weeklyLoggedHours)} hours away from hitting this week’s academic target.</p>
+          </div>
+        </section>
       </div>
 
       <section className="mt-5 rounded-[24px] border border-[#E8DCE0] bg-[#FFFFFF] p-6">
